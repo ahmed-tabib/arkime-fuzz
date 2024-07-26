@@ -1000,8 +1000,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 ArkimePacketBatch_t   batch;
 uint64_t              fuzzloch_sessionid = 0;
 
-int
-LLVMFuzzerInitialize(int *UNUSED(argc), char ***UNUSED(argv))
+int FuzzerInitialize()
 {
     config.configFile = g_strdup("config.test.ini");
     config.dryRun = 1;
@@ -1041,7 +1040,7 @@ LLVMFuzzerInitialize(int *UNUSED(argc), char ***UNUSED(argv))
  * There are no packet threads in fuzz mode, and the batch call will actually
  * process the packet.  The current time just increases for each packet.
  */
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+int FuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     static uint64_t       ts = 10000;
     BSB                   bsb;
@@ -1080,7 +1079,29 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
     return 0;
 }
+
+__AFL_FUZZ_INIT();
+
+int main() {
+
+    FuzzerInitialize()
+
+#ifdef __AFL_HAVE_MANUAL_CONTROL
+    __AFL_INIT();
+#endif
+    uint8_t* buf = __AFL_FUZZ_TESTCASE_BUF;  // must be after __AFL_INIT and before __AFL_LOOP!
+
+    while (__AFL_LOOP(10000)) {
+        size_t len = __AFL_FUZZ_TESTCASE_LEN;  // don't use the macro directly in a call!
+    
+        FuzzerTestOneInput(buf, len);
+    }
+
+    return 0;
+}
+
 #else
+
 int main(int argc, char **argv)
 {
     signal(SIGHUP, reload);
